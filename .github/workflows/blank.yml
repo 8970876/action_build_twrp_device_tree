@@ -1,12 +1,4 @@
-name: Generate device tree
-      run: |
-        # 尝试标准方法
-        python3 -m twrpdtgen -o dt/ *.img || echo "自动生成失败"
-        
-        # 如果失败，只创建基本结构，稍后手动填充
-        if [ ! -f "dt/Android.mk" ] && [ ! -f "dt/omni_PCDM10.mk" ]; then
-          echo "创建基本设备树结构..."
-          mkdir -p dt/oppo/name: Make TWRP Device
+name: Make TWRP Device
 
 on:
   workflow_dispatch:
@@ -36,6 +28,19 @@ jobs:
     - name: Generate device tree
       run: |
         python3 -m twrpdtgen -o dt/ *.img || echo "Generation failed"
+        
+        # 如果失败，创建基本结构
+        if [ ! -f "dt/Android.mk" ] && [ ! -f "dt/omni_PCDM10.mk" ]; then
+          echo "Creating basic device tree structure..."
+          mkdir -p dt/oppo/PCDM10
+          echo "# Placeholder for Android.mk - add proper content manually" > dt/oppo/PCDM10/Android.mk
+          echo "# Placeholder for device.mk" > dt/oppo/PCDM10/device.mk
+          echo "# Placeholder for BoardConfig.mk" > dt/oppo/PCDM10/BoardConfig.mk
+          echo "add_lunch_combo omni_PCDM10-eng" > dt/oppo/PCDM10/vendorsetup.sh
+          echo "add_lunch_combo omni_PCDM10-userdebug" >> dt/oppo/PCDM10/vendorsetup.sh
+          echo "# Placeholder for omni_PCDM10.mk" > dt/oppo/PCDM10/omni_PCDM10.mk
+          echo "Basic structure created, please manually fill Makefile content"
+        fi
 
     - name: Create zip
       run: |
@@ -46,11 +51,3 @@ jobs:
       with:
         name: device-tree
         path: DeviceTree.zip
-          echo "# Placeholder for Android.mk - add proper content manually" > dt/oppo/PCDM10/Android.mk
-          echo "# Placeholder for device.mk" > dt/oppo/PCDM10/device.mk
-          echo "# Placeholder for BoardConfig.mk" > dt/oppo/PCDM10/BoardConfig.mk
-          echo "add_lunch_combo omni_PCDM10-eng" > dt/oppo/PCDM10/vendorsetup.sh
-          echo "add_lunch_combo omni_PCDM10-userdebug" >> dt/oppo/PCDM10/vendorsetup.sh
-          echo "# Placeholder for omni_PCDM10.mk" > dt/oppo/PCDM10/omni_PCDM10.mk
-          echo "基本结构已创建，请手动填充 Makefile 内容"
-        fi
