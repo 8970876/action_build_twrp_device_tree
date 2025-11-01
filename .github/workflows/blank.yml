@@ -20,9 +20,9 @@ jobs:
     - name: Prepare the environment
       run: |
         sudo apt update
-        sudo apt -y install python3 python3-pip cpio wget aria2
+        sudo apt -y install python3 python3-pip cpio wget aria2 abootimg binwalk file
         sudo apt -y install python-is-python3
-        pip3 install twrpdtgen
+        pip3 install --upgrade twrpdtgen
         mkdir dt
       
     - name: Download boot or recovery img
@@ -30,9 +30,39 @@ jobs:
         aria2c "${{ github.event.inputs.IMG_URL }}"
         ls
       
-    - name: Start build with custom device info
+    - name: Extract device info from image
       run: |
-        python3 -m twrpdtgen -o dt/ --custom PCDM10 OPPO RenoZ *.img
+        for img_file in *.img; do
+          echo "尝试提取 $img_file 的设备信息..."
+          # 使用 strings 命令查找设备信息
+          strings "$img_file" | grep -i "oppo\|reno\|pcdm10" | head -10 || true
+          strings "$img_file" | grep -E "ro.product.|ro.build." | head -10 || true
+        done
+      
+    - name: Generate device tree
+      run: |
+        # 尝试标准方法
+        python3 -m twrpdtgen -o dt/ *.img || echo "自动生成失败，使用手动方法"
+        
+        # 检查是否生成成功
+        if [ ! -f "dt/Android.mk" ] && [ ! -f "dt/omni_PCDM10.mk" ]; then
+          echo "创建手动设备树..."
+          mkdir -p dt/oppo/PCDM10
+          cat > dt/oppo/PCDM10/Android.mk << 'EOF'
+LOCAL_PATH := $(call my-dir)
+
+$(call inherit-product, vendor/omni/config/gsm.mk)
+$(call inherit-product, $(LOCAL_PATH)/device.mk)
+
+$(call inherit-product, vendor/omni/config/common.mk)
+
+PRODUCT_DEVICE := PCDM10
+PRODUCT_NAME := omni_PCDM10
+PRODUCT_BRAND := OPPO
+PRODUCT_MODEL := Reno Z
+PRODUCT_MANUFACTURER := OPPO
+EOF
+        fi
       
     - name: ZIP device tree
       run: |
@@ -45,6 +75,6 @@ jobs:
           ./DeviceTree.zip
         name: TWRP_Device_Tree-${{ github.run_id }}
         tag_name: ${{ github.run_id }}
-        body: DeviceTree for twrp
+        body: DeviceTree for OPPO Reno Z (PCDM10)
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
