@@ -30,14 +30,6 @@ jobs:
         aria2c "${{ github.event.inputs.IMG_URL }}"
         ls
       
-    - name: Extract device info from image
-      run: |
-        for img_file in *.img; do
-          echo "尝试提取 $img_file 的设备信息..."
-          strings "$img_file" | grep -i "oppo\|reno\|pcdm10" | head -10 || true
-          strings "$img_file" | grep -E "ro.product.|ro.build." | head -10 || true
-        done
-      
     - name: Generate device tree
       run: |
         # 尝试标准方法
@@ -48,8 +40,12 @@ jobs:
           echo "创建手动设备树..."
           mkdir -p dt/oppo/PCDM10
           
-          # 使用 heredoc 创建文件，避免 YAML 解析问题
-          cat > dt/oppo/PCDM10/Android.mk << 'ENDOFFILE'
+          # 使用脚本文件来创建复杂的 Makefile
+          cat > create_tree.sh << 'EOF'
+#!/bin/bash
+mkdir -p dt/oppo/PCDM10
+
+cat > dt/oppo/PCDM10/Android.mk << 'FILEEND'
 LOCAL_PATH := $(call my-dir)
 
 $(call inherit-product, vendor/omni/config/gsm.mk)
@@ -62,9 +58,9 @@ PRODUCT_NAME := omni_PCDM10
 PRODUCT_BRAND := OPPO
 PRODUCT_MODEL := Reno Z
 PRODUCT_MANUFACTURER := OPPO
-ENDOFFILE
+FILEEND
 
-          cat > dt/oppo/PCDM10/device.mk << 'ENDOFFILE'
+cat > dt/oppo/PCDM10/device.mk << 'FILEEND'
 LOCAL_PATH := $(call my-dir)
 
 $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base.mk)
@@ -74,9 +70,9 @@ PRODUCT_BRAND := OPPO
 PRODUCT_MODEL := Reno Z
 PRODUCT_MANUFACTURER := OPPO
 PRODUCT_DEVICE := PCDM10
-ENDOFFILE
+FILEEND
 
-          cat > dt/oppo/PCDM10/BoardConfig.mk << 'ENDOFFILE'
+cat > dt/oppo/PCDM10/BoardConfig.mk << 'FILEEND'
 TARGET_NO_KERNEL := true
 BOARD_KERNEL_CMDLINE := console=ttyMSM0,115200n8 androidboot.hardware=qcom
 BOARD_KERNEL_BASE := 0x80000000
@@ -84,18 +80,23 @@ BOARD_KERNEL_PAGESIZE := 4096
 BOARD_KERNEL_OFFSET := 0x00008000
 BOARD_RAMDISK_OFFSET := 0x01000000
 BOARD_TAGS_OFFSET := 0x00000100
-ENDOFFILE
+FILEEND
 
-          cat > dt/oppo/PCDM10/vendorsetup.sh << 'ENDOFFILE'
+cat > dt/oppo/PCDM10/vendorsetup.sh << 'FILEEND'
 add_lunch_combo omni_PCDM10-eng
 add_lunch_combo omni_PCDM10-userdebug
-ENDOFFILE
+FILEEND
 
-          cat > dt/oppo/PCDM10/omni_PCDM10.mk << 'ENDOFFILE'
+cat > dt/oppo/PCDM10/omni_PCDM10.mk << 'FILEEND'
 $(call inherit-product, device/oppo/PCDM10/device.mk)
 
 PRODUCT_NAME := omni_PCDM10
-ENDOFFILE
+FILEEND
+EOF
+
+          chmod +x create_tree.sh
+          ./create_tree.sh
+          rm create_tree.sh
         fi
       
     - name: ZIP device tree
