@@ -6,7 +6,46 @@
         # 如果失败，只创建基本结构，稍后手动填充
         if [ ! -f "dt/Android.mk" ] && [ ! -f "dt/omni_PCDM10.mk" ]; then
           echo "创建基本设备树结构..."
-          mkdir -p dt/oppo/PCDM10
+          mkdir -p dt/oppo/name: Make TWRP Device
+
+on:
+  workflow_dispatch:
+    inputs:
+      IMG_URL:
+        description: 'IMG URL'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup environment
+      run: |
+        sudo apt update
+        sudo apt install -y python3 python3-pip wget aria2
+        pip3 install twrpdtgen
+        mkdir dt
+
+    - name: Download image
+      run: |
+        aria2c "${{ github.event.inputs.IMG_URL }}"
+
+    - name: Generate device tree
+      run: |
+        python3 -m twrpdtgen -o dt/ *.img || echo "Generation failed"
+
+    - name: Create zip
+      run: |
+        zip -r DeviceTree.zip dt/
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: device-tree
+        path: DeviceTree.zip
           echo "# Placeholder for Android.mk - add proper content manually" > dt/oppo/PCDM10/Android.mk
           echo "# Placeholder for device.mk" > dt/oppo/PCDM10/device.mk
           echo "# Placeholder for BoardConfig.mk" > dt/oppo/PCDM10/BoardConfig.mk
