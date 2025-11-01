@@ -1,53 +1,52 @@
+
+
 name: Make TWRP Device
 
 on:
   workflow_dispatch:
     inputs:
-      IMG_URL:
-        description: 'IMG URL'
+      IMG_URL:    
+        description: 'IMG_URL'
         required: true
+        default: ''
 
 jobs:
   build:
+    if: github.event.repository.owner.id == github.event.sender.id
     runs-on: ubuntu-latest
+    
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Setup environment
+    - name: Check Out
+      uses: actions/checkout@main
+      
+    - name: Prepare the environment
       run: |
         sudo apt update
-        sudo apt install -y python3 python3-pip wget aria2
+        sudo apt -y install python3 python3-pip cpio wget aria2
+        sudo apt -y install python-is-python3
         pip3 install twrpdtgen
         mkdir dt
-
-    - name: Download image
+      
+    - name: Download boot or recovery img
       run: |
         aria2c "${{ github.event.inputs.IMG_URL }}"
-
-    - name: Generate device tree
+        ls
+      
+    - name: Start build with custom device info
       run: |
-        python3 -m twrpdtgen -o dt/ *.img || echo "Generation failed"
+        python3 -m twrpdtgen -o dt/ --custom PCDM10 OPPO RenoZ *.img
+      
+    - name: ZIP device tree
+      run: |
+        zip -r DeviceTree.zip ./dt
         
-        # 如果失败，创建基本结构
-        if [ ! -f "dt/Android.mk" ] && [ ! -f "dt/omni_PCDM10.mk" ]; then
-          echo "Creating basic device tree structure..."
-          mkdir -p dt/oppo/PCDM10
-          echo "# Placeholder for Android.mk - add proper content manually" > dt/oppo/PCDM10/Android.mk
-          echo "# Placeholder for device.mk" > dt/oppo/PCDM10/device.mk
-          echo "# Placeholder for BoardConfig.mk" > dt/oppo/PCDM10/BoardConfig.mk
-          echo "add_lunch_combo omni_PCDM10-eng" > dt/oppo/PCDM10/vendorsetup.sh
-          echo "add_lunch_combo omni_PCDM10-userdebug" >> dt/oppo/PCDM10/vendorsetup.sh
-          echo "# Placeholder for omni_PCDM10.mk" > dt/oppo/PCDM10/omni_PCDM10.mk
-          echo "Basic structure created, please manually fill Makefile content"
-        fi
-
-    - name: Create zip
-      run: |
-        zip -r DeviceTree.zip dt/
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
+    - name: Upload to Release
+      uses: softprops/action-gh-release@v1
       with:
-        name: device-tree
-        path: DeviceTree.zip
+        files: |
+          ./DeviceTree.zip
+        name: TWRP_Device_Tree-${{ github.run_id }}
+        tag_name: ${{ github.run_id }}
+        body: DeviceTree for twrp
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
