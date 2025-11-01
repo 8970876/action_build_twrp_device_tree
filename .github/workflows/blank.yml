@@ -1,35 +1,3 @@
-name: Make TWRP Device
-
-on:
-  workflow_dispatch:
-    inputs:
-      IMG_URL:    
-        description: 'IMG_URL'
-        required: true
-        default: ''
-
-jobs:
-  build:
-    if: github.event.repository.owner.id == github.event.sender.id
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Check Out
-      uses: actions/checkout@main
-      
-    - name: Prepare the environment
-      run: |
-        sudo apt update
-        sudo apt -y install python3 python3-pip cpio wget aria2 abootimg binwalk file
-        sudo apt -y install python-is-python3
-        pip3 install --upgrade twrpdtgen
-        mkdir dt
-      
-    - name: Download boot or recovery img
-      run: |
-        aria2c "${{ github.event.inputs.IMG_URL }}"
-        ls
-      
     - name: Generate device tree
       run: |
         # 尝试标准方法
@@ -40,76 +8,36 @@ jobs:
           echo "创建手动设备树..."
           mkdir -p dt/oppo/PCDM10
           
-          # 使用脚本文件来创建复杂的 Makefile
-          cat > create_tree.sh << 'EOF'
-#!/bin/bash
-mkdir -p dt/oppo/PCDM10
-
-cat > dt/oppo/PCDM10/Android.mk << 'FILEEND'
-LOCAL_PATH := $(call my-dir)
-
-$(call inherit-product, vendor/omni/config/gsm.mk)
-$(call inherit-product, $(LOCAL_PATH)/device.mk)
-
-$(call inherit-product, vendor/omni/config/common.mk)
-
-PRODUCT_DEVICE := PCDM10
-PRODUCT_NAME := omni_PCDM10
-PRODUCT_BRAND := OPPO
-PRODUCT_MODEL := Reno Z
-PRODUCT_MANUFACTURER := OPPO
-FILEEND
-
-cat > dt/oppo/PCDM10/device.mk << 'FILEEND'
-LOCAL_PATH := $(call my-dir)
-
-$(call inherit-product, $(SRC_TARGET_DIR)/product/full_base.mk)
-
-PRODUCT_NAME := PCDM10
-PRODUCT_BRAND := OPPO
-PRODUCT_MODEL := Reno Z
-PRODUCT_MANUFACTURER := OPPO
-PRODUCT_DEVICE := PCDM10
-FILEEND
-
-cat > dt/oppo/PCDM10/BoardConfig.mk << 'FILEEND'
-TARGET_NO_KERNEL := true
-BOARD_KERNEL_CMDLINE := console=ttyMSM0,115200n8 androidboot.hardware=qcom
-BOARD_KERNEL_BASE := 0x80000000
-BOARD_KERNEL_PAGESIZE := 4096
-BOARD_KERNEL_OFFSET := 0x00008000
-BOARD_RAMDISK_OFFSET := 0x01000000
-BOARD_TAGS_OFFSET := 0x00000100
-FILEEND
-
-cat > dt/oppo/PCDM10/vendorsetup.sh << 'FILEEND'
-add_lunch_combo omni_PCDM10-eng
-add_lunch_combo omni_PCDM10-userdebug
-FILEEND
-
-cat > dt/oppo/PCDM10/omni_PCDM10.mk << 'FILEEND'
-$(call inherit-product, device/oppo/PCDM10/device.mk)
-
-PRODUCT_NAME := omni_PCDM10
-FILEEND
+          # 使用 base64 编码内容来避免 YAML 解析问题
+          base64 -d << EOF > dt/oppo/PCDM10/Android.mk
+TE9DQUxfUEFUSCA6PSAkKGNhbGwgbXktZGlyKQoKKGNhbGwgaW5oZXJpdC1wcm9kdWN0LCB2ZW5kb3Iv
+b21uaS9jb25maWcvc3NtLm1rKQooY2FsbCBpbmhlcml0LXByb2R1Y3QsICQoTE9DQUxfUEFUSCkvZGV2
+aWNlLm1rKQoKKGNhbGwgaW5oZXJpdC1wcm9kdWN0LCB2ZW5kb3Ivb21uaS9jb25maWcvY29tbW9uLm1r
+KQoKUFJPRFVDVF9ERVZJQ0UgOj0gUENETTEwClBST0RVQ1RfTkFNRSA6PSBvbW5pX1BDRE0xMApQUk9E
+VUNUX0JSQU5EIDo9IE9QUE8KUFJPRFVDVF9NT0RFbCA6PSBSZW5vIFoKUFJPRFVDVF9NQU5VRkFDVFVS
+RVIgOj0gT1BQTw==
 EOF
 
-          chmod +x create_tree.sh
-          ./create_tree.sh
-          rm create_tree.sh
+          base64 -d << EOF > dt/oppo/PCDM10/device.mk
+TE9DQUxfUEFUSCA6PSAkKGNhbGwgbXktZGlyKQoKKGNhbGwgaW5oZXJpdC1wcm9kdWN0LCAkKFNSQ19U
+QVJHRVRfRElSKSSwcm9kdWN0L2Z1bGxfYmFzZS5taykKClBST0RVQ1RfTkFNRSA6PSBQQ0RNMTAKUFJP
+RFVDVF9CUkFORCA6PSBPUFBPClBST0RVQ1RfTU9ERUwgOj0gUmVubyBaClBST0RVQ1RfTUFOVUZBQ1RV
+UkVSIDo9IE9QUE8KUFJPRFVDVF9ERVZJQ0UgOj0gUENETTEw
+EOF
+
+          base64 -d << EOF > dt/oppo/PCDM10/BoardConfig.mk
+VEFSR0VUX05PX0tFUk5FTCA6PSB0cnVlCkJPQVJEX0tFUk5FTF9DTURMSU5FIDo9IGNvbnNvbGU9dHR5
+TVNNMCwxMTUyMDBuOCBhbmRyb2lkYm9vdC5oYXJkd2FyZT1xY29tCkJPQVJEX0tFUk5FTF9CQVNFIDo9
+IDB4ODAwMDAwMDAKQk9BUkRfS0VSTkVMX1BBR0VTSVpFIDo9IDQwOTYKQk9BUkRfS0VSTkVMX09GRlNF
+VCA6PSAweDAwMDA4MDAwCkJPQVJEX1JBWURJU0tfT0ZGU0VUIDo9IDB4MDEwMDAwMDAKQk9BUkRfVEFH
+U19PRkZTRVQgOj0gMHgwMDAwMDEwMA==
+EOF
+
+          echo 'add_lunch_combo omni_PCDM10-eng' > dt/oppo/PCDM10/vendorsetup.sh
+          echo 'add_lunch_combo omni_PCDM10-userdebug' >> dt/oppo/PCDM10/vendorsetup.sh
+          
+          base64 -d << EOF > dt/oppo/PCDM10/omni_PCDM10.mk
+KGNhbGwgaW5oZXJpdC1wcm9kdWN0LCBkZXZpY2Uvb3Bwby9QQ0RNMTAvZGV2aWNlLm1rKQoKUFJPRFVD
+VF9OQU1FIDo9IG9tbmlfUENETTEw
+EOF
         fi
-      
-    - name: ZIP device tree
-      run: |
-        zip -r DeviceTree.zip ./dt
-        
-    - name: Upload to Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          ./DeviceTree.zip
-        name: TWRP_Device_Tree-${{ github.run_id }}
-        tag_name: ${{ github.run_id }}
-        body: DeviceTree for OPPO Reno Z (PCDM10)
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
