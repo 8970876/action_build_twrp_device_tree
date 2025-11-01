@@ -1,4 +1,4 @@
-    - name: Generate device tree
+    name: Generate device tree
       run: |
         # 尝试标准方法
         python3 -m twrpdtgen -o dt/ *.img || echo "自动生成失败，使用手动方法"
