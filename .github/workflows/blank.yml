@@ -20,8 +20,8 @@ jobs:
     - name: Prepare the environment
       run: |
         sudo apt update
-        sudo apt -y install python3 python3-pip cpio wget aria2
-        sudo apt -y install python-is-python3  # 创建 python 符号链接
+        sudo apt -y install python2 python2-pip cpio wget aria2
+        sudo apt -y install python-is-python2  # 创建 python 符号链接
         pip3 install twrpdtgen
         mkdir dt
       
@@ -32,8 +32,8 @@ jobs:
       
     - name: Start build
       run: |
-        python3 -m twrpdtgen -h
-        python3 -m twrpdtgen -o dt/ *.img
+        python2 -m twrpdtgen -h
+        python2 -m twrpdtgen -o dt/ *.img
     - name: ZIP device tree
       run: |
         zip -r DeviceTree.zip ./dt
